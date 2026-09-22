@@ -1,0 +1,105 @@
+import { chromium } from 'playwright';
+import { resolve } from 'node:path';
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+
+await mkdir('test-results', { recursive: true });
+const executablePath = process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const options = { executablePath, headless: true, ignoreDefaultArgs: ['--disable-extensions'], viewport: { width: 1440, height: 960 }, args: ['--enable-unsafe-extension-debugging', '--no-first-run'] };
+const key = 'internetAquarium.v1';
+const report = { productionLoad: false, onboarding: false, manualPermissionPrompt: 'Native accept/deny needs a manual check; automation does not operate browser chrome.', checks: [] };
+let context;
+async function load(path, profile) {
+  context = await chromium.launchPersistentContext(profile, options);
+  const cdp = await context.browser().newBrowserCDPSession();
+  const { id } = await cdp.send('Extensions.loadUnpacked', { path });
+  const worker = context.serviceWorkers().find(w => w.url().includes(id)) ?? await context.waitForEvent('serviceworker', { timeout: 15000 });
+  return { id, worker, cdp };
+}
+try {
+  const production = await load(resolve('dist'), resolve('.browser-test-profile', 'production-' + Date.now()));
+  let page = await context.newPage(); await page.goto(`chrome-extension://${production.id}/index.html`);
+  await page.getByRole('button', { name: 'Start my aquarium' }).waitFor();
+  await page.screenshot({ path: 'test-results/extension-onboarding.png' });
+  report.productionLoad = true; report.onboarding = true;
+  assert.deepEqual((await production.worker.evaluate(() => chrome.permissions.getAll())).permissions.sort(), ['alarms', 'storage']);
+  await page.getByRole('button', { name: 'Start my aquarium' }).click();
+  await page.waitForTimeout(500);
+  assert.equal((await production.worker.evaluate(key => chrome.storage.local.get(key), key))[key], undefined, 'No tracking state before permission acceptance');
+  await context.close();
+  // Worker/UI bundles stay unchanged. This isolated copy makes permissions required
+  // so tracking tests do not need to operate native Chrome permission dialogs.
+  const testPath = resolve('test-results', 'extension-with-test-permissions');
+  await cp(resolve('dist'), testPath, { recursive: true });
+  const manifest = JSON.parse(await readFile(resolve(testPath, 'manifest.json'), 'utf8'));
+  manifest.permissions.push(...manifest.optional_permissions); delete manifest.optional_permissions;
+  await writeFile(resolve(testPath, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  const profile = resolve('.browser-test-profile', 'tracking-' + Date.now());
+  let { id, worker } = await load(testPath, profile);
+  page = await context.newPage(); await page.goto(`chrome-extension://${id}/index.html`);
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.getByRole('button', { name: 'Start my aquarium' }).click();
+  await page.getByRole('button', { name: 'Open settings' }).waitFor();
+  for (const other of context.pages()) if (other !== page) await other.close();
+  const read = () => worker.evaluate(async key => (await chrome.storage.local.get(key))[key], key);
+  await context.route('https://**/*', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Local fixture</title><p>Browser tracking fixture. No internet request.</p>' }));
+  const site = await context.newPage(); await site.goto('https://www.github.com/private/path?token=never-store'); await site.bringToFront();
+  const alarmDeadline = Date.now() + 40000;
+  while (Date.now() < alarmDeadline) {
+    if ((await read()).domains.find(d => d.hostname === 'github.com')?.activeTimeSeconds > 5) break;
+    await page.waitForTimeout(1000);
+  }
+  assert.ok((await read()).domains.find(d => d.hostname === 'github.com').activeTimeSeconds > 5, 'Periodic alarm persists active time without navigation');
+  report.checks.push('real periodic alarm checkpoint');
+  await site.goto('https://github.com/another-path');
+  await page.waitForTimeout(2500);
+  await site.goto('https://youtube.com/watch?v=private');
+  await page.waitForTimeout(1500);
+  await page.bringToFront();
+  await page.waitForTimeout(1000);
+  let data = await read();
+  assert.equal(data.domains.length, 2); assert.equal(data.domains.find(d => d.hostname === 'github.com').totalVisits, 2);
+  assert.ok(data.domains.find(d => d.hostname === 'github.com').activeTimeSeconds > 2, 'Real tab switches accrue active time');
+  assert.ok(!JSON.stringify(data).includes('private') && !JSON.stringify(data).includes('never-store'));
+  report.checks.push('real history events and www normalization', 'focused active-tab timing', 'no URL paths or page titles stored');
+  const beforePause = data.domains.reduce((s, d) => s + d.activeTimeSeconds, 0);
+  await page.waitForTimeout(2000);
+  await page.getByRole('button', { name: 'Open settings' }).click();
+  await page.getByLabel('Bubbles', { exact: true }).click();
+  await page.waitForFunction(() => !document.querySelector('label:has(input) input:checked') || [...document.querySelectorAll('label')].find(label => label.textContent === 'Bubbles')?.querySelector('input')?.checked === false);
+  await page.waitForTimeout(500);
+  data = await read(); assert.equal(data.domains.reduce((s, d) => s + d.activeTimeSeconds, 0), beforePause, 'Dashboard time is not tracked');
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await page.getByRole('textbox', { name: 'Search your aquarium' }).fill('github');
+  await page.getByRole('button', { name: /github.com/ }).click();
+  await page.getByRole('button', { name: 'Pin fish', exact: true }).click();
+  await page.waitForTimeout(500);
+  const beforeRestart = await read();
+  await context.close();
+  ({ id, worker } = await load(testPath, profile));
+  page = await context.newPage(); await page.goto(`chrome-extension://${id}/index.html`);
+  await page.getByRole('button', { name: 'Open settings' }).waitFor();
+  const afterRestart = await read();
+  assert.deepEqual(afterRestart.domains, beforeRestart.domains);
+  assert.equal(afterRestart.settings.bubbles, false); assert.equal(afterRestart.onboarded, true);
+  report.checks.push('dashboard pauses active time', 'pins, settings and fish survive full browser restart');
+  await page.getByRole('button', { name: 'Open settings' }).click();
+  await page.getByLabel('Record new visits', { exact: true }).click();
+  await page.waitForTimeout(500);
+  await context.route('https://**/*', route => route.fulfill({ contentType: 'text/html', body: '<title>Fixture</title>' }));
+  const pausedSite = await context.newPage(); await pausedSite.goto('https://example.org');
+  await page.waitForTimeout(500);
+  assert.ok(!(await read()).domains.some(d => d.hostname === 'example.org'));
+  await page.bringToFront();
+  await page.getByRole('button', { name: 'Reset aquarium', exact: true }).click();
+  const historyBefore = await worker.evaluate(() => chrome.history.search({ text: '', startTime: 0 }));
+  await page.getByRole('button', { name: 'Yes, reset aquarium' }).click();
+  await page.getByRole('button', { name: 'Start my aquarium' }).waitFor();
+  assert.equal(await read(), undefined);
+  const historyAfter = await worker.evaluate(() => chrome.history.search({ text: '', startTime: 0 }));
+  assert.deepEqual(historyAfter, historyBefore);
+  report.checks.push('visit tracking toggle', 'reset clears only extension data and preserves browser history');
+  assert.deepEqual(errors, []); report.pageErrors = errors; report.browser = await context.browser().version();
+  await writeFile('test-results/extension-report.json', JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(report, null, 2));
+} finally { await context?.close(); }

@@ -1,0 +1,17 @@
+{
+  "productionLoad": true,
+  "onboarding": true,
+  "manualPermissionPrompt": "Native accept/deny needs a manual check; automation does not operate browser chrome.",
+  "checks": [
+    "real periodic alarm checkpoint",
+    "real history events and www normalization",
+    "focused active-tab timing",
+    "no URL paths or page titles stored",
+    "dashboard pauses active time",
+    "pins, settings and fish survive full browser restart",
+    "visit tracking toggle",
+    "reset clears only extension data and preserves browser history"
+  ],
+  "pageErrors": [],
+  "browser": "153.0.8010.53"
+}

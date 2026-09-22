@@ -1,0 +1,11 @@
+node_modules/
+.pnpm-store/
+dist/
+build/
+test-results/
+*.log
+*.tsbuildinfo
+.browser-profile/
+.browser-test-profile/
+.tmp/
+generated-data/
