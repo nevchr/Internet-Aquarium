@@ -73,6 +73,10 @@ try {
   await page.getByRole('textbox', { name: 'Search your aquarium' }).fill('github');
   await page.getByRole('button', { name: /github.com/ }).click();
   await page.getByRole('button', { name: 'Pin fish', exact: true }).click();
+  await page.getByRole('button', { name: 'Name fish', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Fish name', exact: true }).fill('Pearl');
+  await page.getByRole('button', { name: 'Save name', exact: true }).click();
+  await page.getByRole('heading', { name: 'Pearl', exact: true }).waitFor();
   await page.waitForTimeout(500);
   const beforeRestart = await read();
   await context.close();
@@ -81,8 +85,9 @@ try {
   await page.getByRole('button', { name: 'Open settings' }).waitFor();
   const afterRestart = await read();
   assert.deepEqual(afterRestart.domains, beforeRestart.domains);
+  assert.equal(afterRestart.domains.find(d => d.hostname === 'github.com').customName, 'Pearl');
   assert.equal(afterRestart.settings.bubbles, false); assert.equal(afterRestart.onboarded, true);
-  report.checks.push('dashboard pauses active time', 'pins, settings and fish survive full browser restart');
+  report.checks.push('dashboard pauses active time', 'custom names, pins, settings and fish survive full browser restart');
   await page.getByRole('button', { name: 'Open settings' }).click();
   await page.getByLabel('Record new visits', { exact: true }).click();
   await page.waitForTimeout(500);

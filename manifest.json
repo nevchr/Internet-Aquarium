@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Internet Aquarium",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A living, local-only aquarium made from the places you explore online.",
   "minimum_chrome_version": "120",
   "permissions": ["storage", "alarms"],

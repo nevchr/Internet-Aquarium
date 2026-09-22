@@ -8,7 +8,7 @@
     "focused active-tab timing",
     "no URL paths or page titles stored",
     "dashboard pauses active time",
-    "pins, settings and fish survive full browser restart",
+    "custom names, pins, settings and fish survive full browser restart",
     "visit tracking toggle",
     "reset clears only extension data and preserves browser history"
   ],

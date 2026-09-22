@@ -1,5 +1,6 @@
 import { CATEGORIES, DEFAULT_SETTINGS, type AquariumData, type DomainRecord, type Settings } from '../models';
 import { hashDomain, normalizeDomain } from '../domain';
+import { normalizeFishName } from '../names';
 
 const object = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const number = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max;
@@ -27,8 +28,10 @@ export function validateData(input: unknown): AquariumData {
     for (const field of ['firstVisitedAt', 'lastVisitedAt', 'createdAt', 'totalVisits', 'activeTimeSeconds']) if (!number(value[field])) throw new Error(`Invalid ${field} in export.`);
     if ((value.firstVisitedAt as number) > (value.lastVisitedAt as number) || (value.lastVisitedAt as number) > Date.now() + 86400000 || (value.createdAt as number) > Date.now() + 86400000 || !Number.isInteger(value.totalVisits) || (value.totalVisits as number) < 1) throw new Error('Invalid visit dates or count.');
     seen.add(value.hostname);
+    const customName = normalizeFishName(value.customName);
     return { id: value.hostname, hostname: value.hostname, fishSeed: value.fishSeed as number, category: value.category as DomainRecord['category'], pinned: value.pinned,
-      firstVisitedAt: value.firstVisitedAt as number, lastVisitedAt: value.lastVisitedAt as number, createdAt: value.createdAt as number, totalVisits: value.totalVisits as number, activeTimeSeconds: value.activeTimeSeconds as number };
+      firstVisitedAt: value.firstVisitedAt as number, lastVisitedAt: value.lastVisitedAt as number, createdAt: value.createdAt as number, totalVisits: value.totalVisits as number, activeTimeSeconds: value.activeTimeSeconds as number,
+      ...(customName ? { customName } : {}) };
   });
   if (typeof input.onboarded !== 'boolean' || !number(input.lastOpenedAt)) throw new Error('Invalid aquarium state.');
   return { version: 1, domains, settings: validateSettings(input.settings), onboarded: input.onboarded, lastOpenedAt: input.lastOpenedAt };

@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "fps500": 66,
+  "fps500": 45,
   "browser": "153.0.8010.53",
   "checks": [
     "80 animated fish",
@@ -8,6 +8,7 @@
     "search",
     "detail",
     "persistent pin",
+    "custom name save, reload, search, cancel and clear",
     "time emphasis",
     "PNG export",
     "JSON export",
@@ -16,8 +17,16 @@
     "390px layout",
     "reset confirmation",
     "onboarding",
-    "validated import",
-    "popup"
+    "validated import with custom name",
+    "named popup",
+    "mouse drag at DPR 2",
+    "held fish stability and continued schooling",
+    "drag survives record updates",
+    "release resumes swimming without recentering",
+    "tank bounds and outside release",
+    "touch drag and cancel",
+    "reduced motion and paused motion",
+    "reset during drag"
   ],
   "pageErrors": []
 }

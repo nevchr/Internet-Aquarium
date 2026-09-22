@@ -23,7 +23,7 @@ export class Simulation {
   actors: Actor[] = [];
   private grid = new Map<number, Actor[]>();
   private bucketPool: Actor[][] = [];
-  step(dt: number, time: number, width: number, height: number, pointer: { x: number; y: number } | null, focus: string | null) {
+  step(dt: number, time: number, width: number, height: number, pointer: { x: number; y: number } | null, focus: string | null, held: string | null = null) {
     dt = Math.min(TUNING.maxDelta, dt);
     for (const bucket of this.grid.values()) { bucket.length = 0; this.bucketPool.push(bucket); }
     this.grid.clear();
@@ -33,6 +33,7 @@ export class Simulation {
       let bucket = this.grid.get(key); if (!bucket) { bucket = this.bucketPool.pop() ?? []; this.grid.set(key, bucket); } bucket.push(fish);
     }
     for (const fish of this.actors) {
+      if (fish.record.hostname === held) continue;
       const traits = fish.texture.traits;
       let ax = Math.cos(time * .19 + fish.phase) * 5, ay = Math.sin(time * .27 + fish.phase) * 3;
       const margin = Math.min(Math.max(TUNING.boundary, 125 * fish.scale), width * .3);

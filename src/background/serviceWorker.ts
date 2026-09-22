@@ -67,7 +67,7 @@ void ensureAlarm();
 chrome.runtime.onMessage.addListener((command: Command, sender, reply) => {
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) return false;
   void serial(async () => {
-    if (!command || !['read', 'start', 'opened', 'settings', 'pin', 'reset', 'import'].includes(command.type)) throw new Error('Unknown aquarium command.');
+    if (!command || !['read', 'start', 'opened', 'settings', 'pin', 'rename', 'reset', 'import'].includes(command.type)) throw new Error('Unknown aquarium command.');
     if (command.type === 'reset') {
       await chrome.storage.session.remove(CLOCK_KEY);
       return repository.reset();

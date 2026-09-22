@@ -15,7 +15,7 @@ export default function App() {
   const [panel, setPanel] = useState<'directory' | 'settings' | null>(null); const [search, setSearch] = useState(''); const [period, setPeriod] = useState<Period>('All Time');
   const [hover, setHover] = useState<{ record: DomainRecord; x: number; y: number } | null>(null); const [newCount, setNewCount] = useState(0); const [notice, setNotice] = useState(''); const [busy, setBusy] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null); const scene = useRef<AquariumScene | null>(null);
-  const select = useCallback((record: DomainRecord) => { setSelected(record.hostname); setPanel(null); scene.current?.select(record.hostname, true); }, []);
+  const select = useCallback((record: DomainRecord, locate = true) => { setSelected(record.hostname); setPanel(null); setHover(null); scene.current?.select(record.hostname, locate); }, []);
   useEffect(() => {
     const aquarium = new AquariumScene(canvas.current!, select, (record, x, y) => setHover(record ? { record, x, y } : null)); scene.current = aquarium;
     return () => { aquarium.destroy(); scene.current = null; };
@@ -31,7 +31,7 @@ export default function App() {
     return () => { alive = false; unsubscribe(); };
   }, []);
   useEffect(() => { scene.current?.setData(data); }, [data]);
-  useEffect(() => { scene.current?.select(selected, true); }, [selected]);
+  useEffect(() => { scene.current?.select(selected); }, [selected]);
   useEffect(() => { scene.current?.setPeriod(period); }, [period]);
   useEffect(() => { const close = (event: KeyboardEvent) => { if (event.key === 'Escape') { setPanel(null); setSelected(null); setSearch(''); } if (event.key === '/' && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) { event.preventDefault(); document.querySelector<HTMLInputElement>('.search-box input')?.focus(); } }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, []);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(''), 5000); return () => clearTimeout(timer); }, [notice]);
@@ -49,11 +49,11 @@ export default function App() {
       <div className="side-actions"><button className={'secondary ' + (panel === 'directory' ? 'active' : '')} onClick={() => { setPanel(panel === 'directory' ? null : 'directory'); setSelected(null); }}><Icon name="list" size={17}/> Species <span>{data.domains.length}</span></button><button className="secondary capture-button" onClick={() => void scene.current?.capture().then(blob => { download(blob, 'internet-aquarium.png'); setNotice('Aquarium captured. The PNG contains no domain labels.'); }).catch(e => setError(String(e)))}><Icon name="capture" size={17}/><span>Capture aquarium</span></button></div>
       {panel === 'directory' && <Directory records={data.domains} search={search} select={select} close={() => { setPanel(null); setSearch(''); }}/>}
       {panel === 'settings' && <Settings data={data} run={run} close={() => setPanel(null)}/>}
-      {chosen && !panel && <Detail record={chosen} close={() => setSelected(null)} pin={() => void safeRun({ type: 'pin', hostname: chosen.hostname })}/>}
+      {chosen && !panel && <Detail record={chosen} close={() => setSelected(null)} pin={() => void safeRun({ type: 'pin', hostname: chosen.hostname })} rename={name => run({ type: 'rename', hostname: chosen.hostname, name })}/>}
       <div className="bottom-center"><div className="timeline" aria-label="Activity emphasis">{(['Today', '7 Days', '30 Days', 'All Time'] as Period[]).map(value => <button key={value} aria-pressed={period === value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div><span className="timeline-hint">{period === 'All Time' ? 'Every species has a place here.' : 'Recent visitors shine. Every fish stays.'}</span></div>
       <footer className="statusbar"><span><strong>{data.domains.length}</strong> species discovered <i/> <strong>{data.domains.filter(d => d.lastVisitedAt >= today).length}</strong> seen today <i/> <strong>{data.domains.filter(d => d.firstVisitedAt >= today).length}</strong> new today</span><span><Icon name="shield" size={14}/>{isDemo ? 'Preview · synthetic data' : 'Only on this device'}{!data.settings.trackVisits && ' · Visits paused'}{data.domains.length > data.settings.fishCount && ` · ${data.settings.fishCount} swimming`}</span></footer>
     </>}
-    {hover && !panel && !chosen && <div className="fish-tooltip" style={{ left: Math.min(hover.x + 15, innerWidth - 230), top: Math.min(hover.y + 18, innerHeight - 95) }}><strong>{hover.record.hostname}</strong><span>{generateFish(hover.record).speciesName} · {hover.record.totalVisits} visits</span></div>}
+    {hover && !panel && !chosen && <div className="fish-tooltip" style={{ left: Math.min(hover.x + 15, innerWidth - 230), top: Math.min(hover.y + 18, innerHeight - 95) }}><strong>{hover.record.customName ?? hover.record.hostname}</strong><span>{hover.record.customName && `${hover.record.hostname} · `}{generateFish(hover.record).speciesName} · {hover.record.totalVisits} visits</span><small>Drag to move · Click for details</small></div>}
     {(error || notice) && <div className={'toast ' + (error ? 'error' : '')} role={error ? 'alert' : 'status'}>{error || notice}{error && <button className="icon-button" aria-label="Dismiss error" onClick={() => setError('')}><Icon name="close" size={16}/></button>}</div>}
     {!loaded && !error && <div className="loading">Opening your aquarium…</div>}
     {!isExtension && !isDemo && <div className="loading">Load the dist folder as an unpacked extension in Chrome.</div>}

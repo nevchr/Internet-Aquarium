@@ -1,0 +1,17 @@
+.aquarium-canvas { touch-action: none; }
+.fish-name h2, .popup-species h1 { overflow-wrap: anywhere; }
+.fish-name .domain-name { margin-bottom: 2px; }
+.fish-name .species-name { color: #b8c8bc; font-size: 11px; margin-bottom: 8px; }
+.fish-name .text-button { padding-top: 8px; }
+.detail .portrait-wrap .fish-portrait { max-width: 240px; }
+.detail .portrait-wrap { margin-bottom: 16px; }
+.detail dl { margin: 16px 0; }
+.name-editor { margin-top: 18px; }
+.name-editor label { display: block; color: #ced8ca; font-size: 11px; margin-bottom: 8px; }
+.name-editor input { width: 100%; background: #051f29; color: #e3e9df; border: 1px solid #9db6a855; border-radius: 6px; padding: 10px 12px; }
+.name-editor input::placeholder { color: #90aaa4; }
+.name-editor .fine-print { margin: 8px 0 12px; }
+.name-actions { display: flex; gap: 8px; }
+.name-editor .error { font-size: 11px; line-height: 1.6; margin: 10px 0 0; }
+.species-row small { overflow-wrap: anywhere; }
+.fish-tooltip small { display: block; font-size: 9px; color: #a6bdb8; margin-top: 8px; }

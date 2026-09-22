@@ -79,8 +79,10 @@ New browser history events + focused active tab
 
 ## Using your aquarium
 
-- Click a fish for its field notes; hover for a compact identification label. Keyboard users can select through Search or Species. `/` focuses Search; Escape closes panels.
-- Search by hostname or generated name. Directory sorting supports recently seen, most visited, newest and alphabetical, plus a pinned-only filter.
+- Click a fish for its field notes; hover for a compact identification label. A soft silhouette glow identifies the selected fish. Keyboard users can select through Search or Species. `/` focuses Search; Escape closes panels.
+- Drag a fish with a mouse, pen or touch to move it around the tank. It stays inside the water and resumes swimming from the release point; other fish keep moving. Dragging also works with motion paused or reduced motion enabled. Positions are temporary, not stored browsing data.
+- Choose **Name fish** in its field notes to save a custom name (up to 40 characters). **Rename fish** changes it; saving a blank name restores its generated species name. Names appear in the directory, hover labels and current-site popup, persist locally, and travel with JSON exports/imports. Existing version 1 exports without names still work. Naming never changes appearance or statistics.
+- Search by custom name, hostname or generated species name. Directory sorting supports recently seen, most visited, newest and alphabetical (custom name, or hostname if unnamed), plus a pinned-only filter.
 - Pin a fish to prioritize it and gently favour central placement. Pinning changes no browsing statistics.
 - Today / 7 Days / 30 Days / All Time change brightness emphasis; they never delete fish. Today starts at local midnight; other periods use rolling days and the latest observed visit.
 - Capture aquarium exports the Canvas scene as PNG. UI panels and private domain labels are deliberately omitted, even when a details panel is open.
@@ -92,7 +94,7 @@ New browser history events + focused active tab
 
 **Internet Aquarium processes browsing metadata locally. Browsing data is never uploaded. There is no cloud backend, analytics service, or account system.**
 
-Stored per domain: hostname, first/last discovery timestamps, recorded visit count, approximate active seconds, deterministic seed, category, creation timestamp, pin. Settings, onboarding status and last aquarium opening are also local. There is no per-page log, favicon fetching, page-title storage, content script, form inspection, remote font or telemetry.
+Stored per domain: hostname, first/last discovery timestamps, recorded visit count, approximate active seconds, deterministic seed, category, creation timestamp, pin and optional custom fish name. Settings, onboarding status and last aquarium opening are also local. There is no per-page log, favicon fetching, page-title storage, content script, form inspection, remote font or telemetry.
 
 The extension has no host permissions and its production Content Security Policy blocks connections with `connect-src 'none'`. Incognito access is disabled in the manifest. Local browser storage is not a separately encrypted vault; people with access to your browser profile or exported JSON may read it.
 

@@ -4,7 +4,8 @@ import { generateFish, growth, maturity, recency, periodStart } from '../src/sha
 import { emptyData } from '../src/shared/models';
 import { demoData } from '../src/shared/demo';
 import { validateData } from '../src/shared/storage/schema';
-import { Repository, DATA_KEY } from '../src/shared/storage/repository';
+import { Repository, DATA_KEY, applyCommand } from '../src/shared/storage/repository';
+import { normalizeFishName } from '../src/shared/names';
 import { recordVisit } from '../src/background/tracking';
 import { accrueTime } from '../src/background/timing';
 
@@ -55,6 +56,45 @@ describe('tracking and timing', () => {
   });
 });
 describe('persistence and import', () => {
+  it('renames without changing fish identity, appearance or browsing statistics', () => {
+    const state = demoData(1), original = structuredClone(state.domains[0]);
+    const renamed = applyCommand(state, { type: 'rename', hostname: original.hostname, name: '  Pearl   the 🐟  ' });
+    expect(renamed.domains[0]).toEqual({ ...original, customName: 'Pearl the 🐟' });
+    expect(state.domains[0]).toEqual(original);
+    expect(generateFish(renamed.domains[0])).toEqual(generateFish(original));
+    recordVisit(renamed, 'https://' + original.hostname, Date.now());
+    expect(renamed.domains[0].customName).toBe('Pearl the 🐟');
+  });
+  it('round-trips custom names and continues to accept older nameless exports', () => {
+    const old = demoData(2);
+    expect(validateData(JSON.parse(JSON.stringify(old)))).toEqual(old);
+    const renamed = applyCommand(old, { type: 'rename', hostname: old.domains[0].hostname, name: 'Pearl' });
+    expect(validateData(JSON.parse(JSON.stringify(renamed)))).toEqual(renamed);
+  });
+  it('clears a nickname and refuses missing fish', () => {
+    const state = demoData(1); state.domains[0].customName = 'Pearl';
+    expect(applyCommand(state, { type: 'rename', hostname: state.domains[0].hostname, name: '   ' }).domains[0]).not.toHaveProperty('customName');
+    expect(() => applyCommand(state, { type: 'rename', hostname: 'missing.example', name: 'Pearl' })).toThrow();
+  });
+  it('validates names in imports as well as rename commands', () => {
+    for (const name of [null, 4, {}, 'a'.repeat(41), 'hi\u0000there']) {
+      expect(() => normalizeFishName(name)).toThrow();
+      const state = demoData(1);
+      expect(() => validateData({ ...state, domains: [{ ...state.domains[0], customName: name }] })).toThrow();
+      expect(() => applyCommand(state, { type: 'rename', hostname: state.domains[0].hostname, name: name as string })).toThrow();
+    }
+    expect(normalizeFishName('Re\u0301my')).toBe('Rémy');
+    expect(normalizeFishName('a'.repeat(40))).toHaveLength(40);
+    const state = demoData(1);
+    expect(() => applyCommand(state, { type: 'rename', hostname: state.domains[0].hostname, name: undefined as unknown as string })).toThrow();
+  });
+  it('persists names across repository instances', async () => {
+    const memory: Record<string, unknown> = {};
+    const storage = { get: async () => memory, set: async (items: Record<string, unknown>) => { Object.assign(memory, structuredClone(items)); }, remove: async () => {} };
+    const state = demoData(1); state.domains[0].customName = 'Pearl';
+    await new Repository(storage).save(state);
+    expect((await new Repository(storage).read()).domains[0].customName).toBe('Pearl');
+  });
   it('round-trips an export and strips unrecognized fields', () => {
     const state = demoData(2000); expect(validateData(JSON.parse(JSON.stringify(state)))).toEqual(state);
     expect(validateData({ ...state, url: 'secret' })).not.toHaveProperty('url');
