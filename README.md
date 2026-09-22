@@ -69,11 +69,11 @@ New browser history events + focused active tab
 
 - Stable domain hash and seeded random generation determine permanent traits. Eight body families, six tail types, three fin styles, seven patterns, colours, fictional names and rare cosmetic glow/translucency provide variety.
 - A small bundled category map subtly influences body families and behaviour. Unknown sites use `Other`. No classification request leaves the device.
-- Size follows `min(2, 0.6 + log1p(visits) × 0.15 + log1p(activeMinutes) × 0.07)`. Diminishing returns prevent unlimited growth.
+- Size follows `0.7 + min(1, log1p(visits) / log1p(500))`: recorded visits drive growth, with diminishing returns and a firm 1.7× cap reached at 500 visits. Active time affects maturity separately.
 - Maturity follows accumulated active time separately and adds fin/tail detail without changing species.
 - Recency smoothly decays activity toward a calm floor. It never kills fish or implies poor health.
 - A spatial grid bounds neighbour checks at 18 per fish. Separation, weak alignment/cohesion, wander, smooth boundary steering and trait-dependent cursor response keep movement varied. Fish artwork is cached; React does not render individual swimming fish.
-- Up to 500 fish swim at once (100/250 are selectable). Priority is selected fish, pinned fish, then recent visitors. All records remain in the searchable, paginated directory. Selecting an unrendered species brings it into the simulation. Large populations use smaller presentation scales.
+- The tank automatically makes room based on its window size: one fish per 14,000 square pixels after reserving 160px of height for controls, up to the selected ceiling of 100/250/500. At 1440×960 this allows 82 fish; at 390×844 it allows 19. Least-visited fish leave the swimming population first. Ties prefer more recent visits, then hostname. Every record, name and pin stays in the searchable directory. Selecting a resting fish temporarily brings it into the tank; closing its details restores the popularity ranking. Held fish stay available during dragging. More visits can bring a resting fish back automatically.
 - Pseudo-depth changes scale, opacity and speed. Plants, stones and coral gain detail with population, category variety and accumulated activity. Local time changes water lighting; rare fish glow at night.
 - Hidden pages suspend animation. Reduced-motion preferences pause motion. Low measured frame rates reduce bubbles and particles.
 
@@ -143,7 +143,7 @@ See [VALIDATION.md](VALIDATION.md) for measured results and remaining manual che
 ## V1 boundaries and next steps
 
 - Finish the native Chrome allow/deny/retry flow check and a short everyday browsing trial in your own profile. Check minimization, focus changes to another app, suspend/resume and a normal manual Chrome restart on your setup.
-- Performance depends on hardware, resolution and device pixel ratio; a universal 60 FPS is not guaranteed. Lower the fish limit if needed. The target is 500 simulated fish and thousands of retained records, not simultaneous simulation of every domain.
+- Performance depends on hardware, resolution and device pixel ratio; a universal 60 FPS is not guaranteed. The renderer supports a ceiling of 500 simulated fish and thousands of retained records; automatic crowding keeps ordinary windows well below that ceiling.
 - This version stores first/last timestamps and aggregates, not a historical timeline. Filters use last-seen timestamps; they cannot reconstruct past fish size.
 - Long-term appearance is implemented from saved aggregates and synthetic old records, but a multi-day real-world soak is still needed.
 - Storage has Chrome's normal local quota; errors are surfaced rather than silently dropping historical fish. Extremely large exports should be backed up before further collection.

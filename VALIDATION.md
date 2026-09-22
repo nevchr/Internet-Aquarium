@@ -1,27 +1,30 @@
-# V1.1 validation — September 22, 2026
+# V1.2 validation — September 22, 2026
 
 This report separates implemented behaviour from observed test evidence. The delivered extension is under `dist/`; test data/profiles/screenshots are ignored by Git.
 
 ## Passed
 
 - Strict TypeScript and production Vite build, including Manifest V3 service worker, bundled extension pages and PNG icons.
-- 27 automated logic checks covering hostname normalization/exclusions, stable hash and traits, category boundaries, monotonic bounded growth, active-time maturity, recency, local-midnight filters, tracking consent/toggle, long-gap timing exclusion, import validation, reset isolation and custom-name validation/persistence/backward compatibility.
+- 32 automated logic checks covering hostname normalization/exclusions, stable hash and traits, category boundaries, visit-driven bounded growth, active-time maturity, recency, local-midnight filters, tracking consent/toggle, long-gap timing exclusion, import validation, reset isolation, custom-name validation/persistence/backward compatibility, popularity ranking, non-destructive crowding and responsive capacity.
 - Real production build loaded unpacked in Chrome 153.0.8010.53 using an isolated profile. Onboarding rendered with no browser/host permissions before consent. No aquarium data was stored while the native permission request awaited acceptance.
 - Real Chrome history events produced fish; `www.github.com` and `github.com` merged, repeated visits accumulated, and URL paths/query tokens/page titles were absent from stored summaries.
 - Focused active-tab intervals accumulated time; a real periodic Chrome alarm persisted time without navigation; time stopped on the aquarium dashboard.
 - Custom fish names, pins, fish, onboarding and settings survived closing Chrome, reopening the same test profile and reloading the unpacked extension through CDP.
 - Turning off visit recording prevented a new domain from being added.
 - Reset removed aquarium state and returned to onboarding; Chrome history contents were compared before/after and remained identical.
-- Browser UI suite: 80 animated fish, direct swimming-fish hover/click, search/detail selection, persistent pin toggle, period emphasis, PNG and JSON downloads, 500 active fish, a 2,000-record directory with search locating a fish outside the initial rendered set, reset confirmation/cancel, import replacement, popup, 390×844 layout and mobile onboarding bounds.
+- Browser UI suite: 80 animated fish, direct swimming-fish hover/click, search/detail selection, persistent pin toggle, period emphasis, PNG and JSON downloads, automatic crowding with 500 records, a 2,000-record directory with search locating a fish outside the initial rendered set, reset confirmation/cancel, import replacement, popup, 390×844 layout and mobile onboarding bounds.
+- Popularity update: the actual renderer grows the same fish with visits and stops at the cap even with one billion visits. With 500 saved records, the 82 most-visited fish swim at 1440×960; resizing to 390×844 reduces this to 19 without deleting records. Tests verify newly popular fish return, names survive, resting fish can be located, and dismissal restores the popularity ranking.
 - Fish interaction update: actual mouse dragging at DPR 2, held-fish stability while other fish swim, dragging across a record update, release without recentering, continued swimming after release, containment at tank boundaries, release outside the canvas, emulated touch dragging/cancellation, reduced-motion and paused-motion dragging, reset during a drag. This is automated browser pointer-input evidence, not a physical touchscreen test.
 - Naming UI: save, search by nickname, reload, cancel with Escape, clear back to species name, export/import retention and popup display. Selection now uses a soft silhouette glow, visually reviewed without the old circle.
 - Desktop, fish-detail and mobile/onboarding screenshots were inspected. A mobile onboarding positioning bug found in visual review was corrected and guarded by a browser assertion.
-- The 500-fish renderer has measured **45–66 FPS at 1440×960, DPR 1** across local headless Chrome runs, including the interaction update. These are variable local samples, not a guarantee of 60 FPS on all desktops or displays. All historical records remain available when simulation is capped.
+- Before automatic crowding, the V1.1 renderer measured **45–66 FPS with 500 fish at 1440×960, DPR 1** in local headless Chrome runs. V1.2 caps that viewport at 82 fish; the latest current-population sample is recorded as `fpsCrowded` in `docs/browser-report.json`. These are local samples, not a guarantee of 60 FPS. All historical records remain available when simulation is capped.
 - Runtime source contains no fetch, XMLHttpRequest, WebSocket or beacon calls. The production manifest has no host permissions or content scripts, excludes incognito and sets `connect-src 'none'`.
 
 ## Test boundary
 
 Native Chrome permission dialogs are outside Playwright's page automation. The real production welcome page and pre-consent state were tested, but clicking the native **Allow / Deny** buttons was not automated. Tracking tests use an isolated copy with `history` and `tabs` moved from optional to required permissions in that copy only. Its worker and UI bundles are identical to production. This does **not** claim end-to-end native optional-permission acceptance was tested.
+
+The tracking, permission and browser-restart evidence above was collected for V1.1. V1.2 changes presentation and population selection; the production build, logic and browser UI suites were rerun. Tracking and persistence code is unchanged.
 
 All test website navigations were locally fulfilled HTML fixtures under normal HTTPS hostnames. No personal browsing history was read or modified, and no test was run in the user's daily browser profile. The real toolbar's popup-opening affordance was not clicked; the bundled popup page was exercised directly.
 

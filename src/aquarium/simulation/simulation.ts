@@ -5,10 +5,10 @@ import { fishTexture, type FishTexture } from '../fish/paint';
 export const TUNING = { gridSize: 100, neighborLimit: 18, boundary: 90, maxDelta: .04, maxFish: 500 };
 export const viewportScale = (width: number) => Math.min(1, Math.max(.4, width / 900));
 export interface Actor { record: DomainRecord; texture: FishTexture; x: number; y: number; vx: number; vy: number; depth: number; scale: number; activity: number; phase: number; turn: number }
-export function refreshActivity(actor: Actor, width: number, compact: boolean) {
+export function refreshActivity(actor: Actor, width: number) {
   actor.activity = recency(actor.record.lastVisitedAt);
   actor.depth = actor.texture.traits.depthPreference * .6 + (1 - actor.activity) * .4;
-  actor.scale = growth(actor.record) * (.38 + (1 - actor.depth) * .26) * viewportScale(width) * (compact ? .7 : 1);
+  actor.scale = growth(actor.record) * (.38 + (1 - actor.depth) * .26) * viewportScale(width);
 }
 export function makeActor(record: DomainRecord, width: number, height: number): Actor {
   const texture = fishTexture(record); const random = seededRandom(record.fishSeed);

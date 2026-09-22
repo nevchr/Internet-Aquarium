@@ -30,8 +30,10 @@ export function generateFish(record: Pick<DomainRecord, 'fishSeed' | 'category'>
     bioluminescent: random() < .04, translucent: random() < .05
   };
 }
-export function growth(record: Pick<DomainRecord, 'totalVisits' | 'activeTimeSeconds'>): number {
-  return Math.min(2, .6 + Math.log1p(record.totalVisits) * .15 + Math.log1p(record.activeTimeSeconds / 60) * .07);
+export const MAX_GROWTH = 1.7;
+export function growth(record: Pick<DomainRecord, 'totalVisits'>): number {
+  // Visits grow the fish; active time affects maturity separately. Stop at 500 visits.
+  return .7 + (MAX_GROWTH - .7) * Math.min(1, Math.log1p(Math.max(0, record.totalVisits)) / Math.log1p(500));
 }
 export function maturity(record: Pick<DomainRecord, 'activeTimeSeconds'>): number { return Math.min(1, Math.log1p(record.activeTimeSeconds / 60) / Math.log1p(60 * 100)); }
 export function recency(lastVisited: number, now = Date.now()): number { return .25 + .75 * Math.exp(-Math.max(0, now - lastVisited) / (7 * 86400000)); }

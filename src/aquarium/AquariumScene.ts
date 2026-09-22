@@ -1,5 +1,6 @@
 import type { AquariumData, Period, DomainRecord } from '../shared/models';
 import { periodStart } from '../shared/fish';
+import { swimmingPopulation, tankCapacity } from '../shared/population';
 import { drawFish } from './fish/paint';
 import { environment } from './environment/environment';
 import { makeActor, refreshActivity, Simulation, type Actor } from './simulation/simulation';
@@ -18,7 +19,7 @@ export class AquariumScene {
   private backgroundKey = ''; private lastMinute = -1;
   private drag: Drag | null = null;
   fps = 0;
-  constructor(private canvas: HTMLCanvasElement, private onSelect: (record: DomainRecord, locate?: boolean) => void, private onHover: (record: DomainRecord | null, x: number, y: number) => void) {
+  constructor(private canvas: HTMLCanvasElement, private onSelect: (record: DomainRecord, locate?: boolean) => void, private onHover: (record: DomainRecord | null, x: number, y: number) => void, private onPopulationChange: (count: number) => void = () => {}) {
     this.ctx = canvas.getContext('2d', { alpha: false })!;
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas);
     canvas.addEventListener('pointermove', this.move); canvas.addEventListener('pointerleave', this.leave);
@@ -31,21 +32,23 @@ export class AquariumScene {
     if (this.drag && !data.domains.some(record => record.hostname === this.drag?.hostname)) this.cancel();
     this.data = data;
     const old = new Map(this.simulation.actors.map(actor => [actor.record.hostname, actor]));
-    const sorted = [...data.domains].sort((a, b) => Number(b.hostname === this.drag?.hostname) - Number(a.hostname === this.drag?.hostname) || Number(b.hostname === this.selected) - Number(a.hostname === this.selected) || Number(b.pinned) - Number(a.pinned) || b.lastVisitedAt - a.lastVisitedAt);
-    this.simulation.actors = sorted.slice(0, data.settings.fishCount).map(record => {
+    const population = swimmingPopulation(data.domains, tankCapacity(this.width, this.height, data.settings.fishCount), this.selected, this.drag?.hostname);
+    this.simulation.actors = population.map(record => {
       const existing = old.get(record.hostname);
       if (existing && JSON.stringify(existing.record) === JSON.stringify(record)) return existing;
       const actor = makeActor(record, this.width, this.height);
       if (existing) { actor.x = existing.x; actor.y = existing.y; actor.vx = existing.vx; actor.vy = existing.vy; actor.turn = existing.turn; }
       return actor;
     }).sort((a, b) => b.depth - a.depth);
-    for (const actor of this.simulation.actors) refreshActivity(actor, this.width, data.domains.length > 200);
+    for (const actor of this.simulation.actors) refreshActivity(actor, this.width);
+    this.onPopulationChange(this.simulation.actors.length);
     this.makeBackground();
   }
   select(hostname: string | null, locate?: boolean) {
+    const changed = hostname !== this.selected;
     if (locate !== undefined || hostname !== this.selected) this.focusUntil = locate ? performance.now() + 8000 : 0;
     this.selected = hostname;
-    if (this.data && hostname && !this.simulation.actors.some(a => a.record.hostname === hostname)) this.setData(this.data);
+    if (this.data && changed) this.setData(this.data);
   }
   setPeriod(period: Period) { this.period = period; }
   capture(): Promise<Blob> { return new Promise((resolve, reject) => this.canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not capture aquarium.')), 'image/png')); }
@@ -63,10 +66,11 @@ export class AquariumScene {
     const rect = this.canvas.getBoundingClientRect(); this.width = Math.max(1, rect.width); this.height = Math.max(1, rect.height);
     if (oldWidth && oldHeight) for (const actor of this.simulation.actors) {
       actor.x *= this.width / oldWidth; actor.y *= this.height / oldHeight;
-      refreshActivity(actor, this.width, (this.data?.domains.length ?? 0) > 200);
+      refreshActivity(actor, this.width);
     }
     const ratio = Math.min(devicePixelRatio || 1, 2); this.canvas.width = this.width * ratio; this.canvas.height = this.height * ratio;
     this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0); this.makeBackground();
+    if (this.data) this.setData(this.data);
   }
   private hit(x: number, y: number): Actor | undefined { return [...this.simulation.actors].reverse().find(a => ((x - a.x) / (58 * a.scale)) ** 2 + ((y - a.y) / (30 * a.scale)) ** 2 < 1); }
   private position(event: PointerEvent) {
@@ -124,7 +128,7 @@ export class AquariumScene {
     const minute = Math.floor(Date.now() / 60000);
     if (minute !== this.lastMinute) {
       this.lastMinute = minute; this.makeBackground();
-      for (const actor of this.simulation.actors) refreshActivity(actor, this.width, (this.data?.domains.length ?? 0) > 200);
+      for (const actor of this.simulation.actors) refreshActivity(actor, this.width);
     }
     if (motion) this.elapsed += dt;
     const ctx = this.ctx;

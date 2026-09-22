@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { categoryFor, hashDomain, newDomain, normalizeDomain } from '../src/shared/domain';
-import { generateFish, growth, maturity, recency, periodStart } from '../src/shared/fish';
+import { generateFish, growth, MAX_GROWTH, maturity, recency, periodStart } from '../src/shared/fish';
+import { swimmingPopulation, tankCapacity } from '../src/shared/population';
 import { emptyData } from '../src/shared/models';
 import { demoData } from '../src/shared/demo';
 import { validateData } from '../src/shared/storage/schema';
@@ -32,12 +33,53 @@ describe('domain identity', () => {
 describe('growth and behaviour', () => {
   it('grows monotonically with diminishing returns and an upper bound', () => {
     const record = newDomain('github.com'); let prior = 0;
-    for (const visits of [1, 2, 10, 100, 1000, 1e9]) { const size = growth({ ...record, totalVisits: visits }); expect(size).toBeGreaterThanOrEqual(prior); expect(size).toBeLessThanOrEqual(2); prior = size; }
+    for (const visits of [1, 2, 10, 100, 1000, 1e9]) { const size = growth({ ...record, totalVisits: visits }); expect(size).toBeGreaterThanOrEqual(prior); expect(size).toBeLessThanOrEqual(MAX_GROWTH); prior = size; }
     expect(growth({ ...record, totalVisits: 10 })).toBeGreaterThan(growth(record));
+  });
+  it('caps popularity at 500 visits and does not inflate size with active time', () => {
+    const record = newDomain('github.com');
+    expect(growth({ ...record, totalVisits: 500 })).toBe(MAX_GROWTH);
+    expect(growth({ ...record, totalVisits: Number.MAX_SAFE_INTEGER })).toBe(MAX_GROWTH);
+    const longVisit = { ...record, activeTimeSeconds: 1e12 };
+    expect(growth(longVisit)).toBe(growth(record));
+    expect(growth({ totalVisits: 2 }) - growth({ totalVisits: 1 })).toBeGreaterThan(growth({ totalVisits: 101 }) - growth({ totalVisits: 100 }));
   });
   it('separates maturity from visits and increases with time', () => { expect(maturity({ activeTimeSeconds: 0 })).toBe(0); expect(maturity({ activeTimeSeconds: 600 })).toBeLessThan(maturity({ activeTimeSeconds: 60000 })); expect(maturity({ activeTimeSeconds: 1e12 })).toBe(1); });
   it('keeps older fish calm and recently visited fish active', () => { const now = Date.now(); expect(recency(now, now)).toBe(1); expect(recency(now - 150 * 86400000, now)).toBeGreaterThanOrEqual(.25); expect(recency(now, now)).toBeGreaterThan(recency(now - 86400000, now)); });
   it('uses local midnight for Today', () => { const now = new Date(2026, 8, 22, 14).getTime(); expect(periodStart('Today', now)).toBe(new Date(2026, 8, 22).getTime()); });
+});
+
+describe('crowding', () => {
+  const records = [
+    { ...newDomain('popular.example', 100), totalVisits: 200 },
+    { ...newDomain('middle.example', 200), totalVisits: 20 },
+    { ...newDomain('quiet.example', 300), totalVisits: 1, pinned: true, customName: 'Pearl' }
+  ];
+  it('removes the least visited from the tank while preserving every saved record', () => {
+    const original = structuredClone(records);
+    expect(swimmingPopulation(records, 2).map(r => r.hostname)).toEqual(['popular.example', 'middle.example']);
+    expect(records).toEqual(original);
+    const updated = records.map(r => r.hostname === 'quiet.example' ? { ...r, totalVisits: 201 } : r);
+    expect(swimmingPopulation(updated, 2).map(r => r.hostname)).toEqual(['quiet.example', 'popular.example']);
+  });
+  it('temporarily locates resting fish and keeps a held fish during updates', () => {
+    expect(swimmingPopulation(records, 2, 'quiet.example').map(r => r.hostname)).toEqual(['quiet.example', 'popular.example']);
+    expect(swimmingPopulation(records, 1, 'popular.example', 'quiet.example')[0].hostname).toBe('quiet.example');
+    expect(swimmingPopulation(records, 2).some(r => r.hostname === 'quiet.example')).toBe(false);
+  });
+  it('breaks visit ties consistently by recency then hostname', () => {
+    const tied = records.map(r => ({ ...r, totalVisits: 1, lastVisitedAt: 100 }));
+    expect(swimmingPopulation(tied, 3)).toEqual(swimmingPopulation([...tied].reverse(), 3));
+    tied[2].lastVisitedAt = 200;
+    expect(swimmingPopulation(tied, 1)[0].hostname).toBe('quiet.example');
+  });
+  it('reduces crowding on small screens and respects the configured ceiling', () => {
+    expect(tankCapacity(390, 844, 500)).toBeLessThan(tankCapacity(1440, 960, 500));
+    expect(tankCapacity(10000, 10000, 100)).toBe(100);
+    expect(tankCapacity(10000, 10000, 500)).toBe(500);
+    expect(tankCapacity(1, 1, 500)).toBe(1);
+    expect(swimmingPopulation([], 80)).toEqual([]);
+  });
 });
 describe('tracking and timing', () => {
   it('starts only after onboarding and stores summaries only', () => {

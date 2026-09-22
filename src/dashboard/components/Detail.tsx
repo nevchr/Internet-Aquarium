@@ -12,7 +12,7 @@ export function Detail({ record, close, pin, rename }: { record: DomainRecord; c
     <span className="category-tag">{record.category}</span><FishName key={record.hostname} record={record} rename={rename}/>
     <dl><div><dt>Discovered</dt><dd>{date(record.firstVisitedAt)}</dd></div><div><dt>Recorded visits</dt><dd>{record.totalVisits.toLocaleString()}</dd></div><div><dt>Approx. active time</dt><dd>{duration(record.activeTimeSeconds)}</dd></div><div><dt>Last seen</dt><dd>{date(record.lastVisitedAt)}</dd></div></dl>
     <div className="maturity-label"><span>Maturity</span><span>{Math.round(maturity(record) * 100)}%</span></div><progress max="1" value={maturity(record)} aria-label="Fish maturity"/>
-    <p className="fine-print">{growth(record).toFixed(2)}× growth · A little more familiar with these waters.</p>
+    <p className="fine-print">{growth(record).toFixed(2)}× growth · More visits, a bigger fish. Always a comfortable size.</p>
     <button className={'secondary wide ' + (record.pinned ? 'pinned' : '')} onClick={pin}><Icon name="pin"/>{record.pinned ? 'Unpin fish' : 'Pin fish'}</button>
     <p className="fine-print">Browsing estimates, collected since your aquarium began.</p>
   </aside>;

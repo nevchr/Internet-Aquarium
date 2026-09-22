@@ -1,6 +1,8 @@
 {
   "passed": true,
-  "fps500": 45,
+  "fpsCrowded": 75,
+  "swimmingAt1440x960": 82,
+  "swimmingAt390x844": 19,
   "browser": "153.0.8010.53",
   "checks": [
     "80 animated fish",
@@ -12,7 +14,7 @@
     "time emphasis",
     "PNG export",
     "JSON export",
-    "500 simulation",
+    "crowding with 500 records",
     "2000 directory and locate",
     "390px layout",
     "reset confirmation",
@@ -26,7 +28,13 @@
     "tank bounds and outside release",
     "touch drag and cancel",
     "reduced motion and paused motion",
-    "reset during drag"
+    "reset during drag",
+    "visit-driven rendered growth",
+    "extreme popularity size cap",
+    "least-visited eviction with 500 saved records",
+    "newly popular fish returns",
+    "locate resting fish and restore ranking on dismissal",
+    "responsive capacity on resize"
   ],
   "pageErrors": []
 }
